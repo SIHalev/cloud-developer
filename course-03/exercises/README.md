@@ -10,6 +10,21 @@ A basic Ionic client web application which consumes the RestAPI Backend.
 
 ## Getting Setup
 
+## CI
+# Travis CI
+https://travis-ci.com/getting_started 
+
+## Docker
+When you are in the docker folder
+To build all the containers
+```bash
+docker-compose -f docker-compose-build.yaml build --parallel
+```
+To deploy all the containers
+```bash
+docker-compose up
+```
+
 ## Kubernetes
 When you are in the k8s folder
 Configure and add all variables and secrets:
@@ -23,6 +38,22 @@ kubectl apply -f backend-feed-service.yaml && kubectl apply -f backend-user-serv
 Register all deployments:
 ```bash
 kubectl apply -f backend-feed-deployment.yaml && kubectl apply -f backend-user-deployment.yaml && kubectl apply -f frontend-deployment.yaml && kubectl apply -f reverseproxy-deployment.yaml
+```
+Check if your containers are running
+```bash
+kubectl get pod -o wide
+```
+Expose the reverse proxy
+```bash
+kubectl port-forward service/reverseproxy 8080:8080
+```
+Expose the frontend
+```bash
+kubectl port-forward service/frontend 8100:8100
+```
+Scaling
+```bash
+kubectl scale deployment/<SERVICE_NAME> --replicas=<NUMBER_OF_RELICAS>
 ```
 
 > _tip_: this frontend is designed to work with the RestAPI backends). It is recommended you stand up the backend first, test using Postman, and then the frontend should integrate.
