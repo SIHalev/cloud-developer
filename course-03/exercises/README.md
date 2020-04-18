@@ -10,6 +10,21 @@ A basic Ionic client web application which consumes the RestAPI Backend.
 
 ## Getting Setup
 
+## Kubernetes
+When you are in the k8s folder
+Configure and add all variables and secrets:
+```bash
+kubectl apply -f ./aws-secret.yaml && kubectl apply -f ./env-secret.yaml && kubectl apply -f ./env-configmap.yaml
+```
+Register all services so the reverse proxy to start healthy:
+```bash
+kubectl apply -f backend-feed-service.yaml && kubectl apply -f backend-user-service.yaml && kubectl apply -f frontend-service.yaml && kubectl apply -f reverseproxy-service.yaml
+```
+Register all deployments:
+```bash
+kubectl apply -f backend-feed-deployment.yaml && kubectl apply -f backend-user-deployment.yaml && kubectl apply -f frontend-deployment.yaml && kubectl apply -f reverseproxy-deployment.yaml
+```
+
 > _tip_: this frontend is designed to work with the RestAPI backends). It is recommended you stand up the backend first, test using Postman, and then the frontend should integrate.
 
 ### Installing Node and NPM
