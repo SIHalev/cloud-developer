@@ -1,50 +1,67 @@
-import { APIGatewayProxyHandler, APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
+import {APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult} from 'aws-lambda'
 import 'source-map-support/register'
-import * as AWS  from 'aws-sdk'
+import * as AWS from 'aws-sdk'
+import * as uuid from 'uuid'
 
-const docClient = new AWS.DynamoDB.DocumentClient()
+const docClient = new AWS.DynamoDB.DocumentClient();
 
-const groupsTable = process.env.GROUPS_TABLE
-const imagesTable = process.env.IMAGES_TABLE
+const groupsTable = process.env.GROUPS_TABLE;
+const imagesTable = process.env.IMAGES_TABLE;
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  console.log('Caller event', event)
-  const groupId = event.pathParameters.groupId
-  const validGroupId = await groupExists(groupId)
+    console.log('Caller event', event);
+    const groupId = event.pathParameters.groupId;
+    const validGroupId = await groupExists(groupId);
 
-  if (!validGroupId) {
-    return {
-      statusCode: 404,
-      headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({
-        error: 'Group does not exist'
-      })
+    if (!validGroupId) {
+        return {
+            statusCode: 404,
+            headers: {
+                'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+                error: 'Group does not exist'
+            })
+        }
     }
-  }
 
-  // TODO: Create an image
+    const imageId = uuid.v4();
+    const image = JSON.parse(event.body);
+    const timeAsIso = new Date().toISOString();
 
-  return {
-    statusCode: 201,
-    headers: {
-      'Access-Control-Allow-Origin': '*'
-    },
-    body: ''
-  }
-}
+    const newItem = {
+        groupId,
+        timeAsIso,
+        imageId,
+        ...image,
+    };
+
+    await docClient.put({
+        TableName: imagesTable,
+        Item: newItem
+    }).promise();
+
+    return {
+        statusCode: 201,
+        headers: {
+            'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+            newItem
+        })
+    }
+};
 
 async function groupExists(groupId: string) {
-  const result = await docClient
+    const result = await docClient
     .get({
-      TableName: groupsTable,
-      Key: {
-        id: groupId
-      }
+        TableName: groupsTable,
+        Key: {
+            id: groupId
+        }
     })
-    .promise()
+    .promise();
 
-  console.log('Get group: ', result)
-  return !!result.Item
+    console.log('Get group: ', result);
+    return !!result.Item
 }
