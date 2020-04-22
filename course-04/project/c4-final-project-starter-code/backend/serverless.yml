@@ -4,13 +4,73 @@ service:
 plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
-
+  - serverless-reqvalidator-plugin
+  #  - serverless-aws-documentation
+  - serverless-plugin-tracing
 provider:
   name: aws
-  runtime: nodejs8.10
+  #runtime: nodejs8.10
+  runtime: nodejs12.x
 
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
+
+  tracing:
+    lambda: true
+    apiGateway: true
+    # TODO check if we need for the other services
+
+  environment:
+    TODOS_TABLE: Todos-sihalev-v2-${self:provider.stage}
+    INDEX_USER_ID: TodosUserIdIndex
+    TODOS_IMAGES_S3_BUCKET: todos-images-sihalev-${self:provider.stage}
+    # Sign url expiration
+    SIGNED_URL_EXPIRATION: 300
+    #AUTH_0_SECRET_ID: Auth0Secret-${self:provider.stage}
+    #AUTH_0_SECRET_FIELD: auth0Secret
+
+
+  # TODO Revisit roles!
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan # TODO remove maybe
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan # TODO remove maybe
+        - dynamodb:Query # TODO remove maybe
+        - dynamodb:GetItem # TODO remove maybe
+        - dynamodb:PutItem # TODO remove maybe
+        - dynamodb:UpdateItem # TODO remove maybe
+        - dynamodb:DeleteItem # TODO remove maybe
+      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.INDEX_USER_ID}
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+        - s3:ListBucket # TODO remove maybe
+      Resource: arn:aws:s3:::${self:provider.environment.TODOS_IMAGES_S3_BUCKET}/*
+    - Effect: Allow
+      Action:
+        - xray:PutTraceSegments
+        - xray:PutTelemetryRecords
+      Resource: "*"
+#    - Effect: Allow
+#      Action:
+#        - secretsmanager:GetSecretValue
+#      Resource: !Ref Auth0Secret
+
+#    - Effect: Allow
+#      Action:
+#        - kms:Decrypt
+#      Resource: !GetAtt KMSKey.Arn
 
 functions:
 
@@ -24,15 +84,18 @@ functions:
       - http:
           method: get
           path: todos
+          #authorizer: Auth
+          cors: true
 
   # TODO: Configure this function
-  GetTodos:
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
     events:
       - http:
           method: post
           path: todos
+          #authorizer: Auth
+          cors: true
 
   # TODO: Configure this function
   UpdateTodo:
@@ -41,6 +104,8 @@ functions:
       - http:
           method: patch
           path: todos/{todoId}
+          #authorizer: Auth
+          cors: true
 
   # TODO: Configure this function
   DeleteTodo:
@@ -49,6 +114,8 @@ functions:
       - http:
           method: delete
           path: todos/{todoId}
+          #authorizer: Auth
+          cors: true
 
   # TODO: Configure this function
   GenerateUploadUrl:
@@ -57,7 +124,159 @@ functions:
       - http:
           method: post
           path: todos/{todoId}/attachment
+          #authorizer: Auth
+          cors: true
 
 resources:
   Resources:
-    # TODO: Add any necessary AWS resources
+
+    GatewayResponseDefault4XX:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,OPTIONS,POST'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
+
+    #    RequestBodyValidator:
+    #      Type: AWS::ApiGateway::RequestValidator
+    #      Properties:
+    #        Name: 'request-body-validator'
+    #        RestApiId:
+    #          Ref: ApiGatewayRestApi
+    #        ValidateRequestBody: true
+    #        ValidateRequestParameters: false
+
+
+    TodosTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: todoId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: todoId # If this was createdAt the deletion needed extra request
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:provider.environment.TODOS_TABLE}
+        LocalSecondaryIndexes:
+          - IndexName: ${self:provider.environment.INDEX_USER_ID}
+            KeySchema:
+              - AttributeName: userId # TODO: test also with todoId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    #    TodosTable:
+    #      Type: "AWS::DynamoDB::Table"
+    #      Properties:
+    #        AttributeDefinitions:
+    #          - AttributeName: todoId
+    #            AttributeType: S
+    #          - AttributeName: createdAt
+    #            AttributeType: S
+    #          - AttributeName: userId
+    #            AttributeType: S
+    #        KeySchema:
+    #          - AttributeName: todoId
+    #            KeyType: HASH
+    #          - AttributeName: createdAt
+    #            KeyType: RANGE
+    #        BillingMode: PAY_PER_REQUEST
+    #        TableName: ${self:provider.environment.TODOS_TABLE}
+    #        LocalSecondaryIndexes:
+    #          - IndexName: ${self:provider.environment.INDEX_USER_ID}
+    #            KeySchema:
+    #              - AttributeName: todoId
+    #                KeyType: HASH
+    #              - AttributeName: userId
+    #                KeyType: RANGE
+    #            Projection:
+    #              ProjectionType: ALL
+
+    #
+    #    # DynamoDB for storing all needed information
+    #    TodosTable:
+    #      Type: AWS::DynamoDB::Table
+    #      Properties:
+    #        AttributeDefinitions:
+    #          - AttributeName: todoId
+    #            AttributeType: S
+    #          - AttributeName: createdAt
+    #            AttributeType: S
+    #          - AttributeName: userId
+    #            AttributeType: S
+    ##          - AttributeName: name
+    ##            AttributeType: S
+    ##          - AttributeName: dueDate
+    ##            AttributeType: S
+    ##          - AttributeName: done
+    ##            AttributeType: S #TODO: Check how to create boolean value
+    ##            # AttributeType: BOOLEAN
+    ##            # AttributeType: BOOL
+    ##          - AttributeName: attachmentUrl # TODO: Check if this is optional
+    ##            AttributeType: S
+    #        KeySchema:
+    #          - AttributeName: todoId
+    #            KeyType: HASH
+    #          - AttributeName: createdAt
+    #            KeyType: RANGE
+    #        BillingMode: PAY_PER_REQUEST
+    #        # StreamSpecification: #TODO check if we need it for the images
+    #        #   StreamViewType: NEW_IMAGE
+    #        TableName: ${self:provider.environment.TODOS_TABLE}
+    #        LocalSecondaryIndexes:
+    ##        GlobalSecondaryIndexes:
+    #          - IndexName: ${self:provider.environment.INDEX_USER_ID}
+    #            KeySchema:
+    #              - AttributeName: userId
+    #                KeyType: HASH
+    ##              - AttributeName: createdAt #TODO Check why cloud formation want this as mandatory
+    ##                KeyType: RANGE
+    #            Projection:
+    #              ProjectionType: ALL
+
+    # S3 bucket for storing todos item images
+    AttachmentsBucket:
+      Type: AWS::S3::Bucket
+      #      DependsOn: SNSTopicPolicy
+      Properties:
+        BucketName: ${self:provider.environment.TODOS_IMAGES_S3_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        PolicyDocument:
+          Id: MyPolicy
+          Version: "2012-10-17"
+          Statement:
+            - Sid: PublicReadForGetBucketObjects
+              Effect: Allow
+              Principal: '*'
+              Action: 's3:GetObject'
+              Resource: 'arn:aws:s3:::${self:provider.environment.TODOS_IMAGES_S3_BUCKET}/*'
+        Bucket: !Ref AttachmentsBucket
+
