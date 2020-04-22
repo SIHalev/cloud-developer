@@ -15,10 +15,10 @@ const docClient: DocumentClient = new XAWS.DynamoDB.DocumentClient();
 const todosTable = process.env.TODOS_TABLE;
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+    logger.info(`Processing event: ${event}`);
+
     const userId: string = getUserId(event);
     const todoId = event.pathParameters.todoId;
-    logger.info(todoId);
-    logger.info(docClient);
 
     const result = await docClient.delete({
         TableName: todosTable,
@@ -36,6 +36,6 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Credentials': true
         },
-        body: null //TODO: Check if it should be ''
+        body: null
     };
 };

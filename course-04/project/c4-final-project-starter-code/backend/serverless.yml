@@ -5,7 +5,7 @@ plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
   - serverless-reqvalidator-plugin
-  #  - serverless-aws-documentation
+  - serverless-aws-documentation
   - serverless-plugin-tracing
 provider:
   name: aws
@@ -58,60 +58,91 @@ provider:
         - xray:PutTelemetryRecords
       Resource: "*"
 
+custom:
+  documentation:
+    api:
+      info:
+        version: v1.0.0
+        title: Todo API
+        description: Serverless todo application
+    models:
+      - name: CreateTodoRequest
+        contentType: application/json
+        schema: ${file(models/create-todo-request.json)}
+      - name: UpdateTodoRequest
+        contentType: application/json
+        schema: ${file(models/update-todo-request.json)}
+
 functions:
 
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
 
-  # TODO: Configure this function
   GetTodos:
     handler: src/lambda/http/getTodos.handler
     events:
       - http:
           method: get
           path: todos
-          #authorizer: Auth
+          authorizer: Auth
           cors: true
+          documentation:
+            summary: Get all todos
+            description: Gets all todos for the current user
 
-  # TODO: Configure this function
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
     events:
       - http:
           method: post
           path: todos
-          #authorizer: Auth
+          authorizer: Auth
           cors: true
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: Create a new todo
+            description: Create a new todo item
+            requestModels:
+              'application/json': CreateTodoRequest
 
-  # TODO: Configure this function
   UpdateTodo:
     handler: src/lambda/http/updateTodo.handler
     events:
       - http:
           method: patch
           path: todos/{todoId}
-          #authorizer: Auth
+          authorizer: Auth
           cors: true
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: Update todo
+            description: Update a todo item
+            requestModels:
+              'application/json': UpdateTodoRequest
 
-  # TODO: Configure this function
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     events:
       - http:
           method: delete
           path: todos/{todoId}
-          #authorizer: Auth
+          authorizer: Auth
           cors: true
+          documentation:
+            summary: Delete todo item by its id
+            description: Delete todo item by id for the current user
 
-  # TODO: Configure this function
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
     events:
       - http:
           method: post
           path: todos/{todoId}/attachment
-          #authorizer: Auth
+          authorizer: Auth
           cors: true
+          documentation:
+            summary: Generates a signed url for s3
+            description: Returns signed url for the s3 bucket and saves the connection in the db
 
 resources:
   Resources:
@@ -127,15 +158,14 @@ resources:
         RestApiId:
           Ref: ApiGatewayRestApi
 
-    #    RequestBodyValidator:
-    #      Type: AWS::ApiGateway::RequestValidator
-    #      Properties:
-    #        Name: 'request-body-validator'
-    #        RestApiId:
-    #          Ref: ApiGatewayRestApi
-    #        ValidateRequestBody: true
-    #        ValidateRequestParameters: false
-
+    RequestBodyValidator:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        Name: 'request-body-validator'
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
 
     TodosTable:
       Type: "AWS::DynamoDB::Table"

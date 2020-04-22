@@ -15,7 +15,7 @@ const todosTable = process.env.TODOS_TABLE;
 const todosIdIndex = process.env.INDEX_USER_ID;
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-    logger.info('Caller event', event);
+    logger.info(`Processing event: ${event}`);
     const userId = getUserId(event);
     logger.info(`User id ${userId}`);
 

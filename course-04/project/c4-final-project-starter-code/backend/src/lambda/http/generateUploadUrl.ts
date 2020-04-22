@@ -20,16 +20,16 @@ const imagesBucketName = process.env.TODOS_IMAGES_S3_BUCKET;
 const signedUrlExpiration = process.env.SIGNED_URL_EXPIRATION;
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+    logger.info(`Processing event: ${event}`);
+
     const userId = getUserId(event);
     const todoId = event.pathParameters.todoId;
-    logger.info(todoId);
-    logger.info(docClient);
 
     const imageId = todoId; // Lets bind s3 image names with todoId's for easy management
     const attachmentUrl = `https://${imagesBucketName}.s3.amazonaws.com/${imageId}`;
     const uploadUrl = getUploadUrl(imagesBucketName, imageId, signedUrlExpiration);
 
-    await docClient.update({// TODO: maybe use put????
+    await docClient.update({
         TableName: todosTable,
         Key: {
             "userId": userId,

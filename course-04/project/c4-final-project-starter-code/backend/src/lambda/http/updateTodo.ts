@@ -18,7 +18,9 @@ const todosTable = process.env.TODOS_TABLE;
 const logger = createLogger('uploadTodoImage');
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+    logger.info(`Processing event: ${event}`);
     const userId = getUserId(event);
+    logger.info(`User id ${userId}`);
     const todoId = event.pathParameters.todoId;
     const updatedTodo: UpdateTodoRequest = JSON.parse(event.body);
 
@@ -50,6 +52,6 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Credentials': true
         },
-        body: null //TODO: Check if it should be ''
+        body: null
     };
 };

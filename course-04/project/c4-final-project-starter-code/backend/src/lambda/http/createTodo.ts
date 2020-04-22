@@ -19,15 +19,12 @@ const logger = createLogger('createTodo');
 const todosTable = process.env.TODOS_TABLE;
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-    logger.info('Processing event: ', event);
+    logger.info(`Processing event: ${event}`);
 
     const parsedTodoBody: CreateTodoRequest = JSON.parse(event.body);
-    const todoId = uuid.v4(); // TODO: maybe just incremental?
+    const todoId = uuid.v4();
     const createdAt: string = new Date().toISOString();
     const userId: string = getUserId(event);
-
-    logger.info(docClient);
-    logger.info(todoId + " " + createdAt);
 
     const newTodo = {
         userId,
@@ -35,7 +32,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
         createdAt,
         done: false,
         attachmentUrl: null,
-        ...parsedTodoBody // TODO: validate name and due date
+        ...parsedTodoBody
     };
 
     const result = await docClient.put({

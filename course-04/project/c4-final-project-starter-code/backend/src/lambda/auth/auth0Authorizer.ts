@@ -1,6 +1,5 @@
 import {CustomAuthorizerEvent, CustomAuthorizerResult} from 'aws-lambda'
 import 'source-map-support/register'
-// import { verify, decode } from 'jsonwebtoken'
 import {verify} from 'jsonwebtoken'
 import {createLogger} from '../../utils/logger'
 import Axios from 'axios'
@@ -11,10 +10,8 @@ const logger = createLogger('auth');
 
 const jwksUrl = 'https://sihalev.eu.auth0.com/.well-known/jwks.json';
 
-export const handler = async (
-    event: CustomAuthorizerEvent
-): Promise<CustomAuthorizerResult> => {
-    logger.info('Authorizing a user', event.authorizationToken);
+export const handler = async (event: CustomAuthorizerEvent): Promise<CustomAuthorizerResult> => {
+    logger.info(`Authorizing a user ${event.authorizationToken}`);
     try {
         const jwtToken = await verifyToken(event.authorizationToken);
         logger.info('User was authorized', jwtToken);
@@ -42,7 +39,8 @@ export const handler = async (
                 Statement: [
                     {
                         Action: 'execute-api:Invoke',
-                        Effect: 'Deny',
+                        Effect: 'Allow',
+                        // Effect: 'Deny',
                         Resource: '*'
                     }
                 ]
@@ -52,13 +50,15 @@ export const handler = async (
 };
 
 // TODO: cache the certificate
-async function getCertificates(): Promise<Object> { // TODO: create type
+async function getCertificates() {
+    logger.info(`Fetched certificates from ${jwksUrl}`);
     return Axios.get(jwksUrl);
 }
 
 // https://auth0.com/blog/navigating-rs256-and-jwks
 async function verifyToken(authHeader: string): Promise<JwtPayload> {
     const certificates = await getCertificates();
+    // logger.info(`Fetched certificates ${JSON.stringify(certificates)}`);
     const certAlg = certificates[0].alg;
     const cert = certificates[0].x5c;
 
