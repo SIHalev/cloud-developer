@@ -9,7 +9,6 @@ plugins:
   - serverless-plugin-tracing
 provider:
   name: aws
-  #runtime: nodejs8.10
   runtime: nodejs12.x
 
   stage: ${opt:stage, 'dev'}
@@ -18,7 +17,6 @@ provider:
   tracing:
     lambda: true
     apiGateway: true
-    # TODO check if we need for the other services
 
   environment:
     TODOS_TABLE: Todos-sihalev-v2-${self:provider.stage}
@@ -26,9 +24,6 @@ provider:
     TODOS_IMAGES_S3_BUCKET: todos-images-sihalev-${self:provider.stage}
     # Sign url expiration
     SIGNED_URL_EXPIRATION: 300
-    #AUTH_0_SECRET_ID: Auth0Secret-${self:provider.stage}
-    #AUTH_0_SECRET_FIELD: auth0Secret
-
 
   # TODO Revisit roles!
   iamRoleStatements:
@@ -62,15 +57,6 @@ provider:
         - xray:PutTraceSegments
         - xray:PutTelemetryRecords
       Resource: "*"
-#    - Effect: Allow
-#      Action:
-#        - secretsmanager:GetSecretValue
-#      Resource: !Ref Auth0Secret
-
-#    - Effect: Allow
-#      Action:
-#        - kms:Decrypt
-#      Resource: !GetAtt KMSKey.Arn
 
 functions:
 
@@ -171,86 +157,16 @@ resources:
         LocalSecondaryIndexes:
           - IndexName: ${self:provider.environment.INDEX_USER_ID}
             KeySchema:
-              - AttributeName: userId # TODO: test also with todoId
+              - AttributeName: userId
                 KeyType: HASH
               - AttributeName: createdAt
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
 
-    #    TodosTable:
-    #      Type: "AWS::DynamoDB::Table"
-    #      Properties:
-    #        AttributeDefinitions:
-    #          - AttributeName: todoId
-    #            AttributeType: S
-    #          - AttributeName: createdAt
-    #            AttributeType: S
-    #          - AttributeName: userId
-    #            AttributeType: S
-    #        KeySchema:
-    #          - AttributeName: todoId
-    #            KeyType: HASH
-    #          - AttributeName: createdAt
-    #            KeyType: RANGE
-    #        BillingMode: PAY_PER_REQUEST
-    #        TableName: ${self:provider.environment.TODOS_TABLE}
-    #        LocalSecondaryIndexes:
-    #          - IndexName: ${self:provider.environment.INDEX_USER_ID}
-    #            KeySchema:
-    #              - AttributeName: todoId
-    #                KeyType: HASH
-    #              - AttributeName: userId
-    #                KeyType: RANGE
-    #            Projection:
-    #              ProjectionType: ALL
-
-    #
-    #    # DynamoDB for storing all needed information
-    #    TodosTable:
-    #      Type: AWS::DynamoDB::Table
-    #      Properties:
-    #        AttributeDefinitions:
-    #          - AttributeName: todoId
-    #            AttributeType: S
-    #          - AttributeName: createdAt
-    #            AttributeType: S
-    #          - AttributeName: userId
-    #            AttributeType: S
-    ##          - AttributeName: name
-    ##            AttributeType: S
-    ##          - AttributeName: dueDate
-    ##            AttributeType: S
-    ##          - AttributeName: done
-    ##            AttributeType: S #TODO: Check how to create boolean value
-    ##            # AttributeType: BOOLEAN
-    ##            # AttributeType: BOOL
-    ##          - AttributeName: attachmentUrl # TODO: Check if this is optional
-    ##            AttributeType: S
-    #        KeySchema:
-    #          - AttributeName: todoId
-    #            KeyType: HASH
-    #          - AttributeName: createdAt
-    #            KeyType: RANGE
-    #        BillingMode: PAY_PER_REQUEST
-    #        # StreamSpecification: #TODO check if we need it for the images
-    #        #   StreamViewType: NEW_IMAGE
-    #        TableName: ${self:provider.environment.TODOS_TABLE}
-    #        LocalSecondaryIndexes:
-    ##        GlobalSecondaryIndexes:
-    #          - IndexName: ${self:provider.environment.INDEX_USER_ID}
-    #            KeySchema:
-    #              - AttributeName: userId
-    #                KeyType: HASH
-    ##              - AttributeName: createdAt #TODO Check why cloud formation want this as mandatory
-    ##                KeyType: RANGE
-    #            Projection:
-    #              ProjectionType: ALL
-
     # S3 bucket for storing todos item images
     AttachmentsBucket:
       Type: AWS::S3::Bucket
-      #      DependsOn: SNSTopicPolicy
       Properties:
         BucketName: ${self:provider.environment.TODOS_IMAGES_S3_BUCKET}
         CorsConfiguration:
@@ -279,4 +195,3 @@ resources:
               Action: 's3:GetObject'
               Resource: 'arn:aws:s3:::${self:provider.environment.TODOS_IMAGES_S3_BUCKET}/*'
         Bucket: !Ref AttachmentsBucket
-
