@@ -1,46 +1,21 @@
 import {APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult} from 'aws-lambda'
 import 'source-map-support/register'
-import * as uuid from 'uuid'
 
 import {CreateTodoRequest} from '../../requests/CreateTodoRequest'
 import {getUserId} from "../utils";
 import {createLogger} from "../../utils/logger";
-
-
-import * as AWS from 'aws-sdk'
-import * as AWSXRay from 'aws-xray-sdk'
-import {DocumentClient} from "aws-sdk/clients/dynamodb";
-
-const XAWS = AWSXRay.captureAWS(AWS);
-const docClient: DocumentClient = new XAWS.DynamoDB.DocumentClient();
+import {createTodo} from "../../logicLayer/todos";
+import {TodoItem} from "../../models/TodoItem";
 
 const logger = createLogger('createTodo');
-
-const todosTable = process.env.TODOS_TABLE;
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     logger.info(`Processing event: ${event}`);
 
-    const parsedTodoBody: CreateTodoRequest = JSON.parse(event.body);
-    const todoId = uuid.v4();
-    const createdAt: string = new Date().toISOString();
     const userId: string = getUserId(event);
+    const parsedTodoBody: CreateTodoRequest = JSON.parse(event.body);
 
-    const newTodo = {
-        userId,
-        todoId,
-        createdAt,
-        done: false,
-        attachmentUrl: null,
-        ...parsedTodoBody
-    };
-
-    const result = await docClient.put({
-        TableName: todosTable,
-        Item: newTodo
-    }).promise();
-
-    logger.info(result);
+    const newTodo: TodoItem = await createTodo(userId, parsedTodoBody);
     return {
         statusCode: 201,
         headers: {
