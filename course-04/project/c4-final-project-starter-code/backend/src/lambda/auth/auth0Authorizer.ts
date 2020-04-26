@@ -49,7 +49,7 @@ export const handler = async (event: CustomAuthorizerEvent): Promise<CustomAutho
     }
 };
 
-// TODO: cache the certificate
+// TODO cache the certificate
 async function getCertificates() {
     logger.info(`Fetched certificates from ${jwksUrl}`);
     return Axios.get(jwksUrl);

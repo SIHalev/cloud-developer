@@ -1,5 +1,6 @@
-const apiId = '2tnlgnp566';
-export const apiEndpoint = `https://${apiId}.execute-api.us-east-1.amazonaws.com/dev`;
+const apiId = 'zn0fh8i46e';
+const stage = 'prd';
+export const apiEndpoint = `https://${apiId}.execute-api.us-east-1.amazonaws.com/${stage}`;
 
 export const authConfig = {
   domain: 'sihalev.eu.auth0.com',
