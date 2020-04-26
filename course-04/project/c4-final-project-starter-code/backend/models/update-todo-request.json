@@ -1,14 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "title": "image",
+  "title": "updateTodo",
   "type": "object",
   "properties": {
-    "title": {
+    "name": {
       "type": "string"
+    },
+    "dueDate": {
+      "type": "string"
+    },
+    "done": {
+      "type": "boolean"
     }
   },
   "required": [
-    "title"
+    "name",
+    "dueDate",
+    "done"
   ],
   "additionalProperties": false
 }

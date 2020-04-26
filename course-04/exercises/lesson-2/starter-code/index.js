@@ -1,51 +1,55 @@
-'use strict'
+'use strict';
 
-const AWS = require('aws-sdk')
+const AWS = require('aws-sdk');
 
-const docClient = new AWS.DynamoDB.DocumentClient()
+const docClient = new AWS.DynamoDB.DocumentClient();
 
-const groupsTable = process.env.GROUPS_TABLE
+const groupsTable = process.env.GROUPS_TABLE;
 
 exports.handler = async (event) => {
-  console.log('Processing event: ', event)
+    console.log('Processing event: ', event);
 
-  // TODO: Read and parse "limit" and "nextKey" parameters from query parameters
-  // let nextKey // Next key to continue scan operation if necessary
-  // let limit // Maximum number of elements to return
+    let limit = getQueryParameter(event, 'limit') || 10;
+    let nextKey = getQueryParameter(event, 'nextKey');
 
-  // HINT: You might find the following method useful to get an incoming parameter value
-  // getQueryParameter(event, 'param')
+    if (limit <= 0) {
+        return {
+            statusCode: 400,
+            headers: {
+                'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({error: "Invalid input parameter!"})
+        }
+    }
 
-  // TODO: Return 400 error if parameters are invalid
+    // Scan operation parameters
+    const scanParams = {
+        TableName: groupsTable,
+        Limit: limit,
+        ExclusiveStartKey: decodeNextKey(nextKey)
+    };
 
-  // Scan operation parameters
-  const scanParams = {
-    TableName: groupsTable,
-    // TODO: Set correct pagination parameters
-    // Limit: ???,
-    // ExclusiveStartKey: ???
-  }
-  console.log('Scan params: ', scanParams)
+    console.log('Scan params: ', scanParams);
 
-  const result = await docClient.scan(scanParams).promise()
+    const result = await docClient.scan(scanParams).promise();
 
-  const items = result.Items
+    const items = result.Items;
 
-  console.log('Result: ', result)
+    console.log('Result: ', result);
 
-  // Return result
-  return {
-    statusCode: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*'
-    },
-    body: JSON.stringify({
-      items,
-      // Encode the JSON object so a client can return it in a URL as is
-      nextKey: encodeNextKey(result.LastEvaluatedKey)
-    })
-  }
-}
+    // Return result
+    return {
+        statusCode: 200,
+        headers: {
+            'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+            items,
+            // Encode the JSON object so a client can return it in a URL as is
+            nextKey: encodeNextKey(result.LastEvaluatedKey)
+        })
+    }
+};
 
 /**
  * Get a query parameter or return "undefined"
@@ -56,12 +60,12 @@ exports.handler = async (event) => {
  * @returns {string} a value of a query parameter value or "undefined" if a parameter is not defined
  */
 function getQueryParameter(event, name) {
-  const queryParams = event.queryStringParameters
-  if (!queryParams) {
-    return undefined
-  }
+    const queryParams = event.queryStringParameters;
+    if (!queryParams) {
+        return undefined
+    }
 
-  return queryParams[name]
+    return queryParams[name]
 }
 
 /**
@@ -72,9 +76,24 @@ function getQueryParameter(event, name) {
  * @return {string} URI encoded last evaluated key
  */
 function encodeNextKey(lastEvaluatedKey) {
-  if (!lastEvaluatedKey) {
-    return null
-  }
+    if (!lastEvaluatedKey) {
+        return null;
+    }
 
-  return encodeURIComponent(JSON.stringify(lastEvaluatedKey))
+    return encodeURIComponent(JSON.stringify(lastEvaluatedKey))
+}
+
+/**
+ * Encode last evaluated key using
+ *
+ * @param {string} lastEvaluatedKey URI encoded last evaluated key
+ *
+ * @return {Object} decoded JS object that represents last evaluated key
+ */
+function decodeNextKey(lastEvaluatedKey) {
+    if (!lastEvaluatedKey) {
+        return null;
+    }
+
+    return JSON.parse(decodeURIComponent(lastEvaluatedKey));
 }
